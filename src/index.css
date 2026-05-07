@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Prose styles for rendered Markdown */
+.prose {
+  color: #1f2937;
+  line-height: 1.7;
+}
+.prose h1 { font-size: 2rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #111827; }
+.prose h2 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #111827; }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #111827; }
+.prose h4 { font-size: 1.1rem; font-weight: 600; margin: 0.75rem 0 0.25rem; color: #374151; }
+.prose p { margin: 0.75rem 0; }
+.prose ul { list-style: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
+.prose ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+.prose li { margin: 0.25rem 0; }
+.prose code { background: #f3f4f6; border-radius: 4px; padding: 2px 6px; font-size: 0.875em; font-family: ui-monospace, monospace; color: #374151; }
+.prose pre { background: #1e293b; color: #e2e8f0; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+.prose pre code { background: transparent; padding: 0; color: inherit; font-size: 0.875rem; }
+.prose blockquote { border-left: 4px solid #8b5cf6; padding-left: 1rem; color: #6b7280; font-style: italic; margin: 1rem 0; }
+.prose a { color: #7c3aed; text-decoration: underline; }
+.prose strong { font-weight: 700; color: #111827; }
+.prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+.prose th { background: #f3f4f6; font-weight: 600; text-align: left; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; }
+.prose td { padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; }
+.prose hr { border-color: #e5e7eb; margin: 1.5rem 0; }
