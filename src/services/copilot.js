@@ -50,6 +50,8 @@ export async function generateDocumentation(repoInfo, files, token, onChunk) {
       model: MODEL,
       messages,
       stream: true,
+      // 16 000 tokens ≈ ~12 000 words of output — sufficient for full-repo docs
+      // while staying within GPT-4o's 16 384 output token limit.
       max_tokens: 16000,
       temperature: 0.3,
     }),

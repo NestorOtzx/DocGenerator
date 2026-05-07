@@ -117,7 +117,7 @@ export default function App() {
             Generate Documentation for Any Public GitHub Repo
           </h2>
           <p className="text-sm text-gray-500 mb-6">
-            Enter your GitHub token and a public repository URL. DocGenerator will analyse
+            Enter your GitHub token and a public repository URL. DocGenerator will analyze
             the source code and produce comprehensive Markdown documentation using GitHub Copilot.
           </p>
 
