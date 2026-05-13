@@ -1,11 +1,14 @@
-/**
- * Download the generated documentation as a .md file.
- */
-export default function DownloadButton({ markdown, repoName, disabled }) {
+export default function DownloadButton({
+  markdown,
+  repoName,
+  filenameSuffix = 'documentation',
+  label = 'Download .md',
+  disabled,
+}) {
   const handleDownload = () => {
     const filename = repoName
-      ? `${repoName.replace(/[^a-zA-Z0-9_-]/g, '_')}_docs.md`
-      : 'documentation.md';
+      ? `${repoName.replace(/[^a-zA-Z0-9_-]/g, '_')}_${filenameSuffix}.md`
+      : `${filenameSuffix}.md`;
 
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -34,7 +37,7 @@ export default function DownloadButton({ markdown, repoName, disabled }) {
         <polyline points="7 10 12 15 17 10" />
         <line x1={12} y1={15} x2={12} y2={3} />
       </svg>
-      Download .md
+      {label}
     </button>
   );
 }

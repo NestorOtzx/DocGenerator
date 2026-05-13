@@ -1,9 +1,6 @@
-/**
- * Repository URL / short-form input with inline validation feedback.
- */
 export default function RepoInput({ value, onChange, onSubmit, disabled, loading }) {
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !disabled && !loading) {
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && !disabled && !loading) {
       onSubmit();
     }
   };
@@ -18,7 +15,7 @@ export default function RepoInput({ value, onChange, onSubmit, disabled, loading
         <input
           type="url"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled || loading}
           placeholder="https://github.com/owner/repo  or  owner/repo"
@@ -38,7 +35,7 @@ export default function RepoInput({ value, onChange, onSubmit, disabled, loading
           {loading ? (
             <>
               <Spinner />
-              Generating…
+              Generating...
             </>
           ) : (
             <>

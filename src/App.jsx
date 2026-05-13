@@ -1,40 +1,64 @@
-import { useState, useRef, useCallback } from 'react';
-import TokenInput from './components/TokenInput';
-import RepoInput from './components/RepoInput';
+import { useCallback, useState } from 'react';
+import AiSelector from './components/AiSelector';
+import ArchitectureViewer from './components/ArchitectureViewer';
 import DocViewer from './components/DocViewer';
 import DownloadButton from './components/DownloadButton';
+import LanguageSelector from './components/LanguageSelector';
+import ModelSelector from './components/ModelSelector';
 import ProgressBar from './components/ProgressBar';
+import RepoInput from './components/RepoInput';
+import TokenInput from './components/TokenInput';
 import { parseRepoUrl, fetchRepoInfo, fetchFileTree, fetchFileContent } from './services/github';
-import { generateDocumentation } from './services/copilot';
+import {
+  generateRepositoryDocuments,
+  parseGeneratedDocuments,
+} from './services/ai';
+import {
+  getDefaultModelId,
+  getDefaultProviderId,
+  getModel,
+  getProvider,
+} from './services/aiProviders';
+import { getDefaultLanguageCode } from './services/languages';
 
 const STEPS = [
   'Fetching repository info',
   'Loading file tree',
   'Reading source files',
-  'Generating documentation with AI',
+  'Generating README and architecture with AI',
 ];
 
 export default function App() {
+  const defaultProviderId = getDefaultProviderId();
+  const [providerId, setProviderId] = useState(defaultProviderId);
+  const [modelId, setModelId] = useState(() => getDefaultModelId(defaultProviderId));
+  const [languageCode, setLanguageCode] = useState(getDefaultLanguageCode());
   const [token, setToken] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
   const [error, setError] = useState(null);
   const [markdown, setMarkdown] = useState('');
+  const [architectureMarkdown, setArchitectureMarkdown] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [repoName, setRepoName] = useState('');
 
-  const markdownRef = useRef('');
+  const handleProviderChange = useCallback((nextProviderId) => {
+    setProviderId(nextProviderId);
+    setModelId(getDefaultModelId(nextProviderId));
+  }, []);
+
+  const provider = getProvider(providerId);
+  const selectedModel = getModel(providerId, modelId);
 
   const handleGenerate = useCallback(async () => {
     setError(null);
     setMarkdown('');
-    markdownRef.current = '';
+    setArchitectureMarkdown('');
     setStreaming(false);
 
-    // Validate inputs
     if (!token.trim()) {
-      setError('Please enter your GitHub Personal Access Token.');
+      setError('Please enter your access token.');
       return;
     }
 
@@ -46,44 +70,59 @@ export default function App() {
       return;
     }
 
+    if (!modelId) {
+      setError('Please select an AI model.');
+      return;
+    }
+
     const { owner, repo } = parsed;
     setLoading(true);
     setCurrentStep(0);
 
     try {
-      // Step 1: Fetch repo metadata
       const repoInfo = await fetchRepoInfo(owner, repo, token);
       setRepoName(repoInfo.full_name);
 
-      // Step 2: Fetch file tree
       setCurrentStep(1);
       const files = await fetchFileTree(owner, repo, token);
 
-      // Step 3: Load file contents in parallel (batches of 10)
       setCurrentStep(2);
       const filesWithContent = await loadFileContents(files, owner, repo, token);
 
-      // Step 4: Generate documentation
       setCurrentStep(3);
       setStreaming(true);
 
-      await generateDocumentation(repoInfo, filesWithContent, token, (chunk) => {
-        markdownRef.current += chunk;
-        setMarkdown(markdownRef.current);
-      });
+      const rawMarkdown = await generateRepositoryDocuments(
+        repoInfo,
+        filesWithContent,
+        token,
+        {
+          providerId,
+          modelId,
+          languageCode,
+          supportsStreaming: selectedModel.supportsStreaming,
+        },
+        (fullText) => {
+          const documents = parseGeneratedDocuments(fullText);
+          setMarkdown(documents.readme);
+          setArchitectureMarkdown(documents.architecture);
+        },
+      );
 
-      setCurrentStep(STEPS.length); // all done
+      const documents = parseGeneratedDocuments(rawMarkdown);
+      setMarkdown(documents.readme);
+      setArchitectureMarkdown(documents.architecture);
+      setCurrentStep(STEPS.length);
     } catch (err) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
       setStreaming(false);
     }
-  }, [token, repoUrl]);
+  }, [languageCode, modelId, providerId, repoUrl, selectedModel.supportsStreaming, token]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex flex-col">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center">
@@ -103,28 +142,46 @@ export default function App() {
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
               bg-violet-100 text-violet-700 text-xs font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-              Powered by GitHub Copilot
+              Powered by {provider.name}
             </span>
           </div>
         </div>
       </header>
 
-      {/* Main */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
-        {/* Intro card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-1">
             Generate Documentation for Any Public GitHub Repo
           </h2>
           <p className="text-sm text-gray-500 mb-6">
             Enter your GitHub token and a public repository URL. DocGenerator will analyze
-            the source code and produce comprehensive Markdown documentation using GitHub Copilot.
+            the source code and produce README.md plus ARQUITECTURA.md using the selected AI model.
           </p>
 
           <div className="flex flex-col gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <AiSelector
+                value={providerId}
+                onChange={handleProviderChange}
+                disabled={loading}
+              />
+              <ModelSelector
+                providerId={providerId}
+                value={modelId}
+                onChange={setModelId}
+                disabled={loading}
+              />
+            </div>
+            <LanguageSelector
+              value={languageCode}
+              onChange={setLanguageCode}
+              disabled={loading}
+            />
             <TokenInput
               value={token}
               onChange={setToken}
+              providerName={provider.name}
+              modelName={selectedModel.name}
               disabled={loading}
             />
             <RepoInput
@@ -136,12 +193,23 @@ export default function App() {
             />
           </div>
 
-          {/* How to get a token */}
           <details className="mt-4 text-sm text-gray-500">
             <summary className="cursor-pointer font-medium text-gray-600 hover:text-violet-600">
-              How to create a GitHub token?
+              How to create a token for {provider.name} / {selectedModel.name}?
             </summary>
             <ol className="mt-2 ml-4 list-decimal space-y-1 text-gray-500">
+              <li>
+                Open the{' '}
+                <a
+                  href="https://github.com/marketplace/models"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-violet-600 underline"
+                >
+                  GitHub Models catalog
+                </a>
+                {' '}and confirm that <strong>{selectedModel.name}</strong> is visible and enabled for your account or organization.
+              </li>
               <li>
                 Go to{' '}
                 <a
@@ -150,28 +218,28 @@ export default function App() {
                   rel="noopener noreferrer"
                   className="text-violet-600 underline"
                 >
-                  GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+                  GitHub - Settings - Developer settings - Personal access tokens - Fine-grained tokens
                 </a>
               </li>
               <li>Click <strong>Generate new token</strong>.</li>
               <li>
-                Under <em>Permissions → Models</em> select <strong>Read-only</strong> access
-                (needed for GitHub Models / Copilot AI).
+                Under <em>Permissions - Models</em> select <strong>Read-only</strong> access
+                (required for every IA/model in this selector because all calls go through GitHub Models).
               </li>
               <li>
                 Optionally add <strong>Contents: Read-only</strong> if you want private repo support.
               </li>
-              <li>Copy the token and paste it above.</li>
+              <li>
+                Copy the token and paste it above. The same token works for OpenAI, Microsoft Phi, DeepSeek, Meta Llama, Mistral, xAI, Cohere, and AI21 models when they are available in your GitHub Models catalog.
+              </li>
             </ol>
           </details>
         </div>
 
-        {/* Progress */}
         {loading && (
           <ProgressBar steps={STEPS} currentStep={currentStep} />
         )}
 
-        {/* Error */}
         {error && (
           <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -188,25 +256,32 @@ export default function App() {
           </div>
         )}
 
-        {/* Download button (when done) */}
-        {markdown && !loading && (
-          <div className="mt-4 flex justify-end">
+        {(markdown || architectureMarkdown) && !loading && (
+          <div className="mt-4 flex flex-wrap justify-end gap-3">
             <DownloadButton
               markdown={markdown}
               repoName={repoName}
-              disabled={streaming}
+              filenameSuffix="README"
+              label="Download README.md"
+              disabled={streaming || !markdown}
+            />
+            <DownloadButton
+              markdown={architectureMarkdown}
+              repoName={repoName}
+              filenameSuffix="ARQUITECTURA"
+              label="Download ARQUITECTURA.md"
+              disabled={streaming || !architectureMarkdown}
             />
           </div>
         )}
 
-        {/* Documentation viewer */}
         <DocViewer markdown={markdown} streaming={streaming} />
+        <ArchitectureViewer markdown={architectureMarkdown} streaming={streaming} />
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-gray-200 bg-white mt-8">
         <div className="max-w-5xl mx-auto px-4 py-4 text-center text-xs text-gray-400">
-          DocGenerator — AI docs powered by{' '}
+          DocGenerator - AI docs powered by{' '}
           <a
             href="https://docs.github.com/en/github-models"
             target="_blank"
@@ -222,19 +297,18 @@ export default function App() {
   );
 }
 
-/** Load file contents in parallel batches */
 async function loadFileContents(files, owner, repo, token, batchSize = 10) {
   const results = [];
   for (let i = 0; i < files.length; i += batchSize) {
     const batch = files.slice(i, i + batchSize);
     const settled = await Promise.allSettled(
-      batch.map(async (f) => {
-        const content = await fetchFileContent(owner, repo, f.sha, token);
-        return { path: f.path, content };
+      batch.map(async (file) => {
+        const content = await fetchFileContent(owner, repo, file.sha, token);
+        return { path: file.path, content };
       }),
     );
-    settled.forEach((r) => {
-      if (r.status === 'fulfilled') results.push(r.value);
+    settled.forEach((result) => {
+      if (result.status === 'fulfilled') results.push(result.value);
     });
   }
   return results;
