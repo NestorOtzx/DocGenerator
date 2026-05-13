@@ -2,6 +2,10 @@
 
 AI-powered GitHub repository documentation generator.
 
+## Live demo
+
+https://nestorotzx.github.io/DocGenerator/
+
 ## What it does
 
 DocGenerator is a React single-page app that uses GitHub Models to generate Markdown documentation for a GitHub repository.
@@ -62,6 +66,15 @@ Open http://localhost:5173 in your browser.
 npm run build
 npm run preview
 ```
+
+## Deploy to GitHub Pages
+
+```bash
+npm run deploy
+```
+
+This publishes the `dist` folder to the `gh-pages` branch.  
+The app is configured to be served from `/DocGenerator/`.
 
 ## How to create a GitHub token
 
